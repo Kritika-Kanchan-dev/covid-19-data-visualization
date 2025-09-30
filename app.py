@@ -62,6 +62,32 @@ else:
     )
     st.plotly_chart(fig)
 
+    st.subheader("⚠️ Misleading Visualization Example")
+    st.markdown("""
+Here we demonstrate how a truncated y-axis can make differences look more dramatic than they really are.
+""")
+
+    # Misleading bar chart (truncated y-axis)
+    top5 = df.sort_values("Confirmed", ascending=False).head(5)
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.bar(top5["Country/Region"], top5["Confirmed"], color="orange")
+    ax.set_ylim(0, top5["Confirmed"].max() * 0.8)  # truncated y-axis -> misleading
+    ax.set_title("Misleading: Top 5 Countries by Confirmed Cases (Truncated Y-axis)")
+    st.pyplot(fig)
+
+    # Corrected bar chart (full y-axis)
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.bar(top5["Country/Region"], top5["Confirmed"], color="green")
+    ax.set_ylim(0, top5["Confirmed"].max() * 1.05)  # full y-axis
+    ax.set_title("Corrected: Top 5 Countries by Confirmed Cases (Full Y-axis)")
+    st.pyplot(fig)
+
+    st.markdown("""
+**Explanation:**  
+- In the misleading chart, the y-axis starts close to the maximum value, exaggerating differences between countries.  
+- The corrected chart uses the full y-axis starting at zero, showing a more accurate comparison.
+""")
+
     st.subheader("Recovery vs Death Rate Across Regions")
     fig = px.scatter(
         df,
