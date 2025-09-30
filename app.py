@@ -4,26 +4,21 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import plotly.express as px
 
-# Load dataset
 @st.cache_data
 def load_data():
     return pd.read_csv("country_wise_latest.csv")
 
 df = load_data()
 
-# ---------------- Sidebar ---------------- #
 st.sidebar.title("⚙️ Dashboard Controls")
 
-# Country dropdown
 countries = df["Country/Region"].unique()
 selected_country = st.sidebar.selectbox("Select Country", ["All Countries"] + list(countries))
 
-# Metric dropdown
 selected_metric = st.sidebar.selectbox(
     "Select Metric", ["Confirmed", "Deaths", "Recovered", "Active"]
 )
 
-# ---------------- Main Title ---------------- #
 st.title("🌍 COVID-19 Interactive Data Visualization Dashboard")
 
 st.markdown("""
@@ -33,7 +28,6 @@ Use the **sidebar dropdown** to switch between:
 - **All countries combined view**  
 """)
 
-# ---------------- If Single Country Selected ---------------- #
 if selected_country != "All Countries":
     st.subheader(f"📌 COVID-19 Statistics for {selected_country}")
     country_data = df[df["Country/Region"] == selected_country].iloc[0]
@@ -44,7 +38,6 @@ if selected_country != "All Countries":
     col3.metric("Recovered", f"{country_data['Recovered']:,}")
     col4.metric("Active", f"{country_data['Active']:,}")
 
-    # Donut chart for case distribution
     fig = px.pie(
         values=[country_data["Deaths"], country_data["Recovered"], country_data["Active"]],
         names=["Deaths", "Recovered", "Active"],
@@ -55,7 +48,6 @@ if selected_country != "All Countries":
     st.plotly_chart(fig)
 
 else:
-    # ---------------- Global View ---------------- #
     st.subheader(f"🌍 Top 10 Countries by {selected_metric}")
     top10 = df.sort_values(selected_metric, ascending=False).head(10)
 
@@ -70,7 +62,6 @@ else:
     )
     st.plotly_chart(fig)
 
-    # Scatter Plot Recovery vs Death Rate
     st.subheader("Recovery vs Death Rate Across Regions")
     fig = px.scatter(
         df,
@@ -83,7 +74,6 @@ else:
     )
     st.plotly_chart(fig)
 
-    # Pie chart - Regional distribution
     st.subheader("Proportion of Cases by WHO Region")
     region_sum = df.groupby("WHO Region")[["Confirmed", "Deaths"]].sum().reset_index()
     fig = px.pie(
@@ -96,14 +86,12 @@ else:
     )
     st.plotly_chart(fig)
 
-    # Heatmap
     st.subheader("Correlation Heatmap")
     corr = df[["Confirmed", "Deaths", "Recovered", "Active"]].corr()
     fig, ax = plt.subplots(figsize=(6, 4))
     sns.heatmap(corr, annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
     st.pyplot(fig)
 
-    # Global totals
     confirmed_global = df["Confirmed"].sum()
     deaths_global = df["Deaths"].sum()
     recovered_global = df["Recovered"].sum()
