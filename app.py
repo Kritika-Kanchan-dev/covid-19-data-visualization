@@ -1,83 +1,114 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 import seaborn as sns
+import matplotlib.pyplot as plt
+import plotly.express as px
 
 # Load dataset
 @st.cache_data
 def load_data():
-    df = pd.read_csv("country_wise_latest.csv")
-    return df
+    return pd.read_csv("country_wise_latest.csv")
 
 df = load_data()
 
-# App title
-st.title("COVID-19 Data Visualization & Storytelling 📊")
+# ---------------- Sidebar ---------------- #
+st.sidebar.title("⚙️ Dashboard Controls")
 
-# Show dataset
-if st.checkbox("Show raw data"):
-    st.write(df.head(20))
+# Country dropdown
+countries = df["Country/Region"].unique()
+selected_country = st.sidebar.selectbox("Select Country", ["All Countries"] + list(countries))
 
-# Basic stats
-st.subheader("Dataset Summary")
-st.write(df.describe())
-
-# Plot 1: Confirmed Cases by Top 10 Countries
-st.subheader("Top 10 Countries with Highest Confirmed Cases")
-top10 = df.sort_values("Confirmed", ascending=False).head(10)
-
-fig, ax = plt.subplots(figsize=(10, 6))
-sns.barplot(x="Confirmed", y="Country/Region", data=top10, ax=ax, palette="Blues_r")
-ax.set_title("Top 10 Countries by Confirmed Cases")
-st.pyplot(fig)
-
-# Misleading Visualization Example
-st.subheader("⚠️ Misleading Visualization Example")
-fig, ax = plt.subplots()
-sns.barplot(x="Country/Region", y="Confirmed", data=top10, ax=ax, palette="Reds")
-ax.set_title("Misleading: No rotation, Hard to Read, Wrong scale")
-st.pyplot(fig)
-
-# Redesigned Correct Visualization
-st.subheader("✅ Redesigned Visualization")
-fig, ax = plt.subplots(figsize=(10, 6))
-sns.barplot(x="Confirmed", y="Country/Region", data=top10, palette="Greens_r", ax=ax)
-ax.set_title("Redesigned: Clear and Informative")
-st.pyplot(fig)
-
-# Death Rate vs Recovery Rate (Scatter)
-st.subheader("Death Rate vs Recovery Rate")
-fig, ax = plt.subplots(figsize=(8, 6))
-sns.scatterplot(
-    x="Deaths / 100 Cases", 
-    y="Recovered / 100 Cases", 
-    hue="WHO Region", 
-    data=df, 
-    ax=ax
+# Metric dropdown
+selected_metric = st.sidebar.selectbox(
+    "Select Metric", ["Confirmed", "Deaths", "Recovered", "Active"]
 )
-ax.set_title("Recovery vs Death Rate Across Regions")
-st.pyplot(fig)
 
-# Storytelling: Confirmed vs Deaths
-st.subheader("Storytelling with Data")
-fig, ax = plt.subplots(figsize=(10, 6))
-sns.scatterplot(
-    x="Confirmed", 
-    y="Deaths", 
-    size="Recovered", 
-    hue="WHO Region", 
-    data=df, 
-    alpha=0.7, 
-    ax=ax
-)
-ax.set_xscale("log")
-ax.set_yscale("log")
-ax.set_title("Log Scale View: Confirmed vs Deaths (size=Recovered)")
-st.pyplot(fig)
+# ---------------- Main Title ---------------- #
+st.title("🌍 COVID-19 Interactive Data Visualization Dashboard")
 
 st.markdown("""
-### Insights:
-- Countries with the largest confirmed cases are driving the global numbers.
-- Some visualizations can mislead (e.g., bad scaling or poor labeling).
-- Log scale reveals patterns between confirmed and death counts across regions.
+This dashboard explores **COVID-19 statistics** across countries and regions.  
+Use the **sidebar dropdown** to switch between:
+- A **specific country view**  
+- **All countries combined view**  
 """)
+
+# ---------------- If Single Country Selected ---------------- #
+if selected_country != "All Countries":
+    st.subheader(f"📌 COVID-19 Statistics for {selected_country}")
+    country_data = df[df["Country/Region"] == selected_country].iloc[0]
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Confirmed", f"{country_data['Confirmed']:,}")
+    col2.metric("Deaths", f"{country_data['Deaths']:,}")
+    col3.metric("Recovered", f"{country_data['Recovered']:,}")
+    col4.metric("Active", f"{country_data['Active']:,}")
+
+    # Donut chart for case distribution
+    fig = px.pie(
+        values=[country_data["Deaths"], country_data["Recovered"], country_data["Active"]],
+        names=["Deaths", "Recovered", "Active"],
+        hole=0.4,
+        title=f"Case Distribution in {selected_country}",
+        color_discrete_sequence=px.colors.qualitative.Set2
+    )
+    st.plotly_chart(fig)
+
+else:
+    # ---------------- Global View ---------------- #
+    st.subheader(f"🌍 Top 10 Countries by {selected_metric}")
+    top10 = df.sort_values(selected_metric, ascending=False).head(10)
+
+    fig = px.bar(
+        top10,
+        x=selected_metric,
+        y="Country/Region",
+        orientation="h",
+        color=selected_metric,
+        color_continuous_scale="Viridis",
+        title=f"Top 10 Countries by {selected_metric}",
+    )
+    st.plotly_chart(fig)
+
+    # Scatter Plot Recovery vs Death Rate
+    st.subheader("Recovery vs Death Rate Across Regions")
+    fig = px.scatter(
+        df,
+        x="Deaths / 100 Cases",
+        y="Recovered / 100 Cases",
+        color="WHO Region",
+        size="Confirmed",
+        hover_name="Country/Region",
+        title="Recovery vs Death Rate",
+    )
+    st.plotly_chart(fig)
+
+    # Pie chart - Regional distribution
+    st.subheader("Proportion of Cases by WHO Region")
+    region_sum = df.groupby("WHO Region")[["Confirmed", "Deaths"]].sum().reset_index()
+    fig = px.pie(
+        region_sum,
+        names="WHO Region",
+        values="Confirmed",
+        hole=0.4,
+        color="WHO Region",
+        title="Share of Confirmed Cases by Region",
+    )
+    st.plotly_chart(fig)
+
+    # Heatmap
+    st.subheader("Correlation Heatmap")
+    corr = df[["Confirmed", "Deaths", "Recovered", "Active"]].corr()
+    fig, ax = plt.subplots(figsize=(6, 4))
+    sns.heatmap(corr, annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
+    st.pyplot(fig)
+
+    # Global totals
+    confirmed_global = df["Confirmed"].sum()
+    deaths_global = df["Deaths"].sum()
+    recovered_global = df["Recovered"].sum()
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("🌍 Global Confirmed", f"{confirmed_global:,}")
+    col2.metric("💀 Global Deaths", f"{deaths_global:,}")
+    col3.metric("💚 Global Recovered", f"{recovered_global:,}")
